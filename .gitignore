@@ -1,0 +1,18 @@
+# Secrets
+.env
+
+# Confidential Kuku content: never upload scripts or anything derived from them
+outputs/
+*.txt
+!requirements.txt
+test_data/
+# working notes, the solution doc (sent separately as a PDF) and the show-specific name list
+# all quote or describe the confidential scripts
+NOTES.md
+SOLUTION_DOC.md
+config/character_aliases.json
+
+# Python
+__pycache__/
+*.pyc
+.venv/

@@ -1,0 +1,92 @@
+# Which model the tool uses. To swap models, change ONE line: `active`.
+# API keys are never stored here. Each profile names an environment variable;
+# put the real key in a local `.env` file (see .env.example), which git ignores.
+
+active: gemini_lite           # finder model (picks promos). Full run 2026-11-06 used Flash-Lite: the free daily
+                              # quota for gemini_flash (3.5 Flash) was used up during development (HTTP 429).
+judge: groq_gptoss            # judge model (scores promos); a DIFFERENT model family from the finder, so it doesn't grade its own picks
+
+defaults:
+  temperature: 0.2            # low = more repeatable runs
+  max_tokens: 4096
+  timeout_s: 120
+  max_retries: 4              # retries on rate limits (429) / server errors, with backoff
+
+# price_in_per_m / price_out_per_m = USD per 1M input / output tokens on PAID plans.
+# Used only to report "what this run would cost at paid prices" (on the free tier it's $0).
+# Approximate list prices: CHECK each provider's pricing page before quoting them. null = not set.
+profiles:
+  # Google Gemini (free tier) via its OpenAI-compatible endpoint
+  # Model names change: list live ones with GET {base_url}/models (2026-11-06: gemini-2.5-flash
+  # was old and overloaded (503); 3.5 Flash available).
+  gemini_flash:
+    provider: openai_compatible
+    base_url: https://generativelanguage.googleapis.com/v1beta/openai
+    model: gemini-3.5-flash
+    api_key_env: GEMINI_API_KEY
+    # Gemini models "think" before answering and thinking tokens count toward max_tokens:
+    # at 4096 the first real reply was cut off. Give room + ask for light reasoning.
+    max_tokens: 16384
+    temperature: 0              # most-likely answer every time: repeatable runs (was 0.2; cuts shifted between runs)
+    extra:
+      reasoning_effort: low
+    fallback: gemini_lite       # used automatically if this model is down after retries
+    price_in_per_m: null        # fill in from ai.google.dev/pricing
+    price_out_per_m: null
+
+  gemini_lite:
+    provider: openai_compatible
+    base_url: https://generativelanguage.googleapis.com/v1beta/openai
+    model: gemini-flash-lite-latest
+    api_key_env: GEMINI_API_KEY
+    max_tokens: 16384
+    temperature: 0              # repeatable runs, same as the main finder
+    price_in_per_m: null
+    price_out_per_m: null
+
+  # Groq (free tier), fast open models. Model list changes: check with GET /openai/v1/models
+  # (llama-3.3-70b-versatile was no longer available on 2026-11-06).
+  groq_gptoss:
+    provider: openai_compatible
+    base_url: https://api.groq.com/openai/v1
+    model: openai/gpt-oss-120b
+    api_key_env: GROQ_API_KEY
+    max_tokens: 8192            # gpt-oss also "thinks"; give room (cut-off replies are detected)
+    extra:
+      reasoning_effort: low
+    price_in_per_m: null      # fill in from groq.com/pricing
+    price_out_per_m: null
+
+  # Second Groq judge with its OWN daily token limit. Used for the blind baseline test (Step 8b) when
+  # gpt-oss-120b's free daily window (200k tokens) was full. Still independent of the Gemini finder.
+  groq_qwen:
+    provider: openai_compatible
+    base_url: https://api.groq.com/openai/v1
+    model: qwen/qwen3.8-27b
+    api_key_env: GROQ_API_KEY
+    max_tokens: 8192
+    price_in_per_m: null
+    price_out_per_m: null
+
+  # Any OpenAI-compatible API (OpenAI, OpenRouter, a local Ollama, or an API Kuku provides)
+  openai:
+    provider: openai_compatible
+    base_url: https://api.openai.com/v1
+    model: gpt-4o-mini
+    api_key_env: OPENAI_API_KEY
+    price_in_per_m: 0.15
+    price_out_per_m: 0.60
+
+  # Anthropic Claude (native API)
+  claude:
+    provider: anthropic
+    base_url: https://api.anthropic.com/v1
+    model: claude-sonnet-5-5
+    api_key_env: ANTHROPIC_API_KEY
+    price_in_per_m: null      # fill in from anthropic.com/pricing
+    price_out_per_m: null
+
+  # Offline fake model for testing the pipeline without any key or cost
+  mock:
+    provider: mock
+    model: mock
